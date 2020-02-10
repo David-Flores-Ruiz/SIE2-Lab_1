@@ -101,6 +101,9 @@ void rtos_start_scheduler(void)
 	SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk
 	        | SysTick_CTRL_ENABLE_Msk;
 	reload_systick();
+
+	task_list.global_tick = 0;			 /* Poner el reloj global en 0 */
+
 	for (;;)
 		;
 }
@@ -109,33 +112,32 @@ rtos_task_handle_t rtos_create_task(void (*task_body)(), uint8_t priority,
 		rtos_autostart_e autostart)
 {
 	rtos_tcb_t new_task;
+	rtos_task_handle_t task_handle;
 
 	if (task_list.nTasks < RTOS_MAX_NUMBER_OF_TASKS)
 	{
-		uint8_t priority;
-		task_state_e state;
-		uint32_t *sp;
-		void (*task_body)();
-		rtos_tick_t local_tick;
-		uint32_t reserved[10];
-		uint32_t stack[RTOS_STACK_SIZE];
-
-		if (autostart == kAutoStart)
-		{
-//			new_task.priority = priority;
+		if (autostart == kAutoStart) {
 			new_task.state = S_READY;
-//			new_task.sp =
-//			new_task.task_body = task_body;
-//			new_task.local_tick =
-//			new_task.reserved =
-//			new_task.stack =
 		}
 
+		if (autostart == kStartSuspended) {
+			new_task.state = S_SUSPENDED;
+		}
 
+		new_task.priority = priority;
+//		new_task.sp =
+		new_task.task_body = task_body;
+		new_task.local_tick = 0;	   /* Reloj local de la tarea en 0 */
+//		new_task.reserved =
+//		new_task.stack =
 
+		task_list.tasks[task_list.nTasks] = new_task;  /* Insertamos la nueva tarea a la lista*/
+		task_handle = task_list.nTasks;/* Para retornar el contador actual de la tarea creada */
+		task_list.nTasks++;			   /* Incrementa indice para insertar la siguiente tarea */
+
+		return task_handle;	/* Retornamos el indice de la tarea nueva */
 	}
-
-
+	return -1;				/* Tarea invalida */
 }
 
 rtos_tick_t rtos_get_clock(void)
@@ -187,15 +189,15 @@ FORCE_INLINE static void context_switch(task_switch_type_e type)
 static void activate_waiting_tasks()
 {
 	uint8_t i = 0;
-	for (i = 0; i < task_list.nTasks; i++) 		  /* Recorremos la lista total de tareas */
+	for (i = 0; i < task_list.nTasks; i++) 		  	/* Recorremos la lista total de tareas */
 	{
-		if (task_list.tasks[i].state = S_WAITING) /* ¿Tarea en estado de ESPERA? */
+		if (task_list.tasks[i].state = S_WAITING) 	/* ¿Tarea en estado de ESPERA? */
 		{
 			task_list.tasks[i].local_tick = task_list.tasks[i].local_tick - 1; 	 /* Disminuye en 1 el reloj local de la tarea */
 
-			if (task_list.tasks[i].local_tick == 0)/* ¿Reloj local de tarea es igual a 0? */
+			if (task_list.tasks[i].local_tick == 0)	/* ¿Reloj local de tarea es igual a 0? */
 			{
-				task_list.tasks[i].state = S_READY;/* Ponemos la tarea en estado LISTO */
+				task_list.tasks[i].state = S_READY;	/* Ponemos la tarea en estado LISTO */
 			}
 		}
 	}
