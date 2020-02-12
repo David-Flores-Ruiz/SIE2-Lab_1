@@ -112,7 +112,7 @@ rtos_task_handle_t rtos_create_task(void (*task_body)(), uint8_t priority,rtos_a
 			new_task.priority =priority;
 			new_task.state = S_READY;
 			new_task.task_body = task_body;
-			task_list.tasks[task.list.nTasks]= new_task;
+			task_list.tasks[task_list.nTasks]= new_task;
 
 		}
 		new_task.state = S_SUSPENDED;
@@ -135,25 +135,29 @@ rtos_task_handle_t rtos_create_task(void (*task_body)(), uint8_t priority,rtos_a
 	};
 
 }
-
 rtos_tick_t rtos_get_clock(void)
 {
-	return task_list.global_tick;
+	rtos_tick_t global_tick = task_list.global_tick;
+	return global_tick;
 }
 
 void rtos_delay(rtos_tick_t ticks)
 {
-
+	task_list.tasks[task_list.current_task].state = S_WAITING;		/* La actual tarea en ESPERA */
+	task_list.tasks[task_list.current_task].local_tick = ticks; /* Asigna tick al reloj local de la tarea */
+	//dispatcher();	// kFromISR, kFromNormalExec 				/* Llama dispatcher (desde la tarea) */
 }
 
 void rtos_suspend_task(void)
 {
-
+	task_list.tasks[task_list.current_task].state = S_SUSPENDED;	/* La actual tarea en SUSPENDIDA */
+	//dispatcher();	// kFromISR, kFromNormalExec 			/* Llama dispatcher (desde la tarea) */
 }
 
 void rtos_activate_task(rtos_task_handle_t task)
 {
-
+	task_list.tasks[task_list.current_task].state = S_READY;		/* La actual tarea en LISTO */
+	//dispatcher();	// kFromISR, kFromNormalExec 			/* Llama dispatcher (desde la tarea) */
 }
 
 /**********************************************************************************/
@@ -162,7 +166,8 @@ void rtos_activate_task(rtos_task_handle_t task)
 
 static void reload_systick(void)
 {
-	SysTick->LOAD = USEC_TO_COUNT(RTOS_TIC_PERIOD_IN_US, CLOCK_GetCoreSysClkFreq());
+	SysTick->LOAD = USEC_TO_COUNT(RTOS_TIC_PERIOD_IN_US,
+	        CLOCK_GetCoreSysClkFreq());
 	SysTick->VAL = 0;
 }
 
@@ -178,7 +183,19 @@ FORCE_INLINE static void context_switch(task_switch_type_e type)
 
 static void activate_waiting_tasks()
 {
+	uint8_t i = 0;
+	for (i = 0; i < task_list.nTasks; i++) 		  	/* Recorremos la lista total de tareas */
+	{
+		if (task_list.tasks[i].state = S_WAITING) 	/* Â¿Tarea en estado de ESPERA? */
+		{
+			task_list.tasks[i].local_tick = task_list.tasks[i].local_tick - 1; 	 /* Disminuye en 1 el reloj local de la tarea */
 
+			if (task_list.tasks[i].local_tick == 0)	/* Â¿Reloj local de tarea es igual a 0? */
+			{
+				task_list.tasks[i].state = S_READY;	/* Ponemos la tarea en estado LISTO */
+			}
+		}
+	}
 }
 
 /**********************************************************************************/
@@ -205,6 +222,7 @@ void SysTick_Handler(void)
 	activate_waiting_tasks();
 	reload_systick();
 }
+
 
 void PendSV_Handler(void)
 {
