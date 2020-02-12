@@ -8,6 +8,7 @@
  * embedded systems II course at ITESO
  */
 //HOLA
+//ontas?
 #include "rtos.h"
 #include "rtos_config.h"
 #include "clock_config.h"
