@@ -7,7 +7,7 @@
  * This is the implementation of the rtos module for the
  * embedded systems II course at ITESO
  */
-
+//HOLA
 #include "rtos.h"
 #include "rtos_config.h"
 #include "clock_config.h"
