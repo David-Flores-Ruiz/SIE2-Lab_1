@@ -125,13 +125,15 @@ rtos_task_handle_t rtos_create_task(void (*task_body)(), uint8_t priority,
 		}
 
 		new_task.priority = priority;
-//		new_task.sp =
+		new_task.sp = &(task_list.tasks[task_list.nTasks].stack[RTOS_STACK_SIZE - STACK_FRAME_SIZE - 1]);
 		new_task.task_body = task_body;
 		new_task.local_tick = 0;	   /* Reloj local de la tarea en 0 */
 //		new_task.reserved =
-//		new_task.stack =
+		new_task.stack[RTOS_STACK_SIZE - STACK_PSR_OFFSET] = STACK_PSR_DEFAULT;
+		new_task.stack[RTOS_STACK_SIZE - STACK_LR_OFFSET] = (uint32_t) task_body;
 
 		task_list.tasks[task_list.nTasks] = new_task;  /* Insertamos la nueva tarea a la lista*/
+
 		task_handle = task_list.nTasks;/* Para retornar el contador actual de la tarea creada */
 		task_list.nTasks++;			   /* Incrementa indice para insertar la siguiente tarea */
 
