@@ -43,6 +43,10 @@ static void refresh_is_alive(void);
 /**********************************************************************************/
 // Type definitions
 /**********************************************************************************/
+typedef enum
+{
+	FALSE = 0, TRUE
+} boolean_t;
 
 typedef enum
 {
@@ -188,23 +192,47 @@ static void dispatcher(task_switch_type_e type)
 	uint8_t i = 0;
 	for (i=0; i < task_list.nTasks; i++) /* Todas las tareas creadas + IDLE(prioridad = 0) */
 	{
-		if (task_list.tasks[i].priority > prioridad_mas_alta		/* ¿Prioridad mas alta? "Y"... ¿Tarea en estado liso "O" corriendo? */
-				&& (task_list.tasks[i].state == S_READY || task_list.tasks[i].state == S_RUNNING))
+		if ( task_list.tasks[i].priority > prioridad_mas_alta  /* ¿Prioridad mas alta? "Y" ¿Tarea en estado ready "O" running? */
+				&& (task_list.tasks[i].state == S_READY || task_list.tasks[i].state == S_RUNNING) )
 		{
-			prioridad_mas_alta = task_list.tasks[i].priority;// > prioridad_mas_alta;	//prioridad_mas_alta = prioridad_de_tarea
-			next_task_handler = i;			//siguiente_tarea = tarea
-		}			//end if
-	}			//end for
-				//if siguiente tarea diferente de tarea actual then
-	task_list.next_task = next_task_handler;
-	if (task_list.next_task != task_list.current_task) {
-		context_switch(type);	//context switch (desde la tarea)
-	}	//end if
+			prioridad_mas_alta = task_list.tasks[i].priority;  /* Asigno la nueva prioridad mas alta al momento */
+			siguiente_tarea = i;		 /* Asigno el indice o ID de la tarea actual dentro de la lista*/
+		}
+	}
+
+	task_list.next_task = siguiente_tarea;	/* Insertamos el ID que encontramos en nuestra estructura de lista */
+
+
+	if (task_list.next_task != task_list.current_task)		   /* ¿La nueva o siguiente tarea a ejecutar es diferente de la actual? */
+	{
+		context_switch(kFromNormalExec);	/* Llama context_switch (desde la tarea) */
+	}
 }
 
 FORCE_INLINE static void context_switch(task_switch_type_e type)
 {
+// 	DUDA... SP = ("r0 ó r7 ó r13 ??? " y como lo metemos al frame correspondiente)
+	register uint32_t SP asm ("r13");	/* De pptx... Para asociar una variable en C a un registro de propósito general */
 
+	static uint8_t first_time_here = TRUE;	/* Seteamos variable booleana solo 1 vez */
+
+	if (first_time_here == FALSE)
+	{
+		/* Salva el stack pointer actual en el Stack Frame ($r0) de la tarea actual */
+		asm ("mov r0, SP");			/* Para almacenar el SP en r0 que es parte del frame */
+
+// DUDA... se debe actualizar aqui?
+		task_list.tasks[task_list.current_task].sp = (uint32_t *)SP;
+
+	}
+
+	task_list.current_task = task_list.next_task; /* Cambia tarea actual por siguiente tarea */
+	task_list.tasks[task_list.current_task].state = S_RUNNING; /* Pone tarea actual a correr */
+
+	/* PendSV set pending bit: bit_28 del registro ICSR (From User Guide) */
+	ICSR = ICSR | 0x‭10000000;	/* Invoca el cambio de contexto (PendSV) */‬
+
+	first_time_here = FALSE;	/* Limpiamos la variable para siempre*/
 }
 
 static void activate_waiting_tasks()
@@ -212,7 +240,7 @@ static void activate_waiting_tasks()
 	uint8_t i = 0;
 	for (i = 0; i < task_list.nTasks; i++) 		  	/* Recorremos la lista total de tareas */
 	{
-		if (task_list.tasks[i].state = S_WAITING) 	/* ¿Tarea en estado de ESPERA? */
+		if (task_list.tasks[i].state == S_WAITING) 	/* ¿Tarea en estado de ESPERA? */
 		{
 			task_list.tasks[i].local_tick = task_list.tasks[i].local_tick - 1; 	 /* Disminuye en 1 el reloj local de la tarea */
 
@@ -245,13 +273,22 @@ void SysTick_Handler(void)
 #ifdef RTOS_ENABLE_IS_ALIVE
 	refresh_is_alive();
 #endif
+
+	task_list.global_tick++; /* Incrementa el reloj global en 1 */
 	activate_waiting_tasks();
+	dispatcher(kFromISR);	 // kFromISR, kFromNormalExec 	/* Llama dispatcher (desde interrupción) */
+
 	reload_systick();
+
 }
 
-void PendSV_Handler(void)
+void PendSV_Handler(void) /* Copy and Paste: From the "first class exercise" */
 {
-
+	register int32_t r0 asm("r0");
+	(void) r0;
+	SCB->ICSR |= SCB_ICSR_PENDSVCLR_Msk;
+	r0 = (int32_t) task_list.tasks[task_list.current_task].sp;
+	asm("mov r7,r0");
 }
 
 /**********************************************************************************/

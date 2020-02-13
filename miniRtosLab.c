@@ -65,11 +65,11 @@ int main(void) {
     BOARD_InitDebugConsole();
 
     PRINTF("Hello World\n");
-
-	rtos_create_task(dummy_task1, 1, kAutoStart);
-	rtos_create_task(dummy_task2, 2, kAutoStart);
-	rtos_create_task(dummy_task3, 3, kAutoStart);	// Cambia prioridad a 3
-	rtos_start_scheduler();
+    								   /* Al pricipio: Index en arreglo de lista = [0] */ /* ntask = 0 */
+	rtos_create_task(dummy_task1, 1, kAutoStart);	/* Index en arreglo de lista = [0] */ /* ntask = 1 */
+	rtos_create_task(dummy_task2, 2, kAutoStart);	/* Index en arreglo de lista = [1] */ /* ntask = 2 */
+	rtos_create_task(dummy_task3, 1, kAutoStart);	/* Index en arreglo de lista = [2] */ /* ntask = 3 */
+	rtos_start_scheduler();	 /* Crea la tarea IDLE con Index en arreglo de lista = [3] */ /* ntask = 4 */
 
 	for (;;)
 	{
