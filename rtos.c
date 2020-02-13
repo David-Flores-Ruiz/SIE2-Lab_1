@@ -100,6 +100,9 @@ void rtos_start_scheduler(void)
 #endif
 	SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
 	reload_systick();
+
+	task_list.global_tick = 0;					// Poner el reloj global en 0
+	rtos_create_task(idle_task, 0, kAutoStart);	// Crear tarea IDLE
 	for (;;);
 }
 
@@ -115,8 +118,8 @@ rtos_task_handle_t rtos_create_task(void (*task_body)(), uint8_t priority,rtos_a
 			new_task.state = S_READY;
 			new_task.task_body = task_body;
 			task_list.tasks[task_list.nTasks]= new_task;
-
 		}
+
 		new_task.state = S_SUSPENDED;
 		task_list.tasks[task_list.nTasks].sp = &(task_list.tasks[task_list.nTasks].stack[RTOS_STACK_SIZE - 1 - STACK_FRAME_SIZE]);//apunta una direccion encima del stack frame
 
@@ -173,9 +176,10 @@ static void reload_systick(void)
 	SysTick->VAL = 0;
 }
 
-static void dispatcher(task_switch_type_e type)
+static void dispatcher(task_switch_type_e type)/////////////////////////////////////
 {
 
+	task_list.tasks[task_list.next_task].
 }
 
 FORCE_INLINE static void context_switch(task_switch_type_e type)
