@@ -102,7 +102,8 @@ void rtos_start_scheduler(void)
 	        | SysTick_CTRL_ENABLE_Msk;
 	reload_systick();
 
-	task_list.global_tick = 0;			 /* Poner el reloj global en 0 */
+	task_list.global_tick = 0;			 		/* Poner el reloj global en 0 */
+	rtos_create_task(idle_task, 0, kAutoStart);	/* Crear tarea IDLE */
 
 	for (;;)
 		;
@@ -145,26 +146,26 @@ rtos_task_handle_t rtos_create_task(void (*task_body)(), uint8_t priority,
 rtos_tick_t rtos_get_clock(void)
 {
 	rtos_tick_t global_tick = task_list.global_tick;
-	return global_tick;
+	return global_tick;		/* Retorna el reloj del sistema */
 }
 
 void rtos_delay(rtos_tick_t ticks)
 {
 	task_list.tasks[task_list.current_task].state = S_WAITING;		/* La actual tarea en ESPERA */
-	task_list.tasks[task_list.current_task].local_tick = ticks; /* Asigna tick al reloj local de la tarea */
-	//dispatcher();	// kFromISR, kFromNormalExec 				/* Llama dispatcher (desde la tarea) */
+	task_list.tasks[task_list.current_task].local_tick = ticks; 	/* Asigna tick al reloj local de la tarea */
+	dispatcher(kFromNormalExec);	// kFromISR, kFromNormalExec 	/* Llama dispatcher (desde la tarea) */
 }
 
 void rtos_suspend_task(void)
 {
 	task_list.tasks[task_list.current_task].state = S_SUSPENDED;	/* La actual tarea en SUSPENDIDA */
-	//dispatcher();	// kFromISR, kFromNormalExec 			/* Llama dispatcher (desde la tarea) */
+	dispatcher(kFromNormalExec);	// kFromISR, kFromNormalExec 	/* Llama dispatcher (desde la tarea) */
 }
 
 void rtos_activate_task(rtos_task_handle_t task)
 {
 	task_list.tasks[task_list.current_task].state = S_READY;		/* La actual tarea en LISTO */
-	//dispatcher();	// kFromISR, kFromNormalExec 			/* Llama dispatcher (desde la tarea) */
+	dispatcher(kFromNormalExec);	// kFromISR, kFromNormalExec 	/* Llama dispatcher (desde la tarea) */
 }
 
 /**********************************************************************************/
@@ -179,8 +180,26 @@ static void reload_systick(void)
 }
 
 static void dispatcher(task_switch_type_e type)
-{
+ {
 
+	uint8_t siguiente_tarea = task_list.nTasks - 1; /* Siguiente Tarea = IDLE creada en el MAIN: rtos_start_scheduler(); */
+	int8_t prioridad_mas_alta = -1;
+
+	uint8_t i = 0;
+	for (i=0; i < task_list.nTasks; i++) /* Todas las tareas creadas + IDLE(prioridad = 0) */
+	{
+		if (task_list.tasks[i].priority > prioridad_mas_alta		/* ¿Prioridad mas alta? "Y"... ¿Tarea en estado liso "O" corriendo? */
+				&& (task_list.tasks[i].state == S_READY || task_list.tasks[i].state == S_RUNNING))
+		{
+			prioridad_mas_alta = task_list.tasks[i].priority;// > prioridad_mas_alta;	//prioridad_mas_alta = prioridad_de_tarea
+			next_task_handler = i;			//siguiente_tarea = tarea
+		}			//end if
+	}			//end for
+				//if siguiente tarea diferente de tarea actual then
+	task_list.next_task = next_task_handler;
+	if (task_list.next_task != task_list.current_task) {
+		context_switch(type);	//context switch (desde la tarea)
+	}	//end if
 }
 
 FORCE_INLINE static void context_switch(task_switch_type_e type)
