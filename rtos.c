@@ -8,9 +8,13 @@
  * embedded systems II course at ITESO
  */
 
+#include "board.h"
+#include "fsl_debug_console.h"
 #include "rtos.h"
 #include "rtos_config.h"
+
 #include "clock_config.h"
+#include "pin_mux.h"
 
 #ifdef RTOS_ENABLE_IS_ALIVE
 #include "fsl_gpio.h"
@@ -205,7 +209,7 @@ static void dispatcher(task_switch_type_e type)
 
 	if (task_list.next_task != task_list.current_task)	/* ¿La nueva o siguiente tarea a ejecutar es diferente de la actual? */
 	{
-		context_switch(kFromNormalExec);	/* Llama context_switch (desde la tarea) */
+		context_switch(type);	/* Llama context_switch (desde la tarea) */
 	}
 }
 
@@ -222,18 +226,24 @@ FORCE_INLINE static void context_switch(task_switch_type_e type)
 		/* Salva el stack pointer actual en el Stack Frame ($r0) de la tarea actual */
 		asm ("mov SP, r7");			/* Para almacenar el SP en r0 que es parte del frame */
 
-// DUDA... se debe actualizar aqui?
 		task_list.tasks[task_list.current_task].sp = (uint32_t *)SP;
+
+		if (type == kFromNormalExec) {
+			task_list.tasks[task_list.current_task].sp -= -8; /* Valor dummy */
+		}
+
+		if (type == kFromISR) {
+			task_list.tasks[task_list.current_task].sp -= -1;
+		}
 
 	}
 
 	task_list.current_task = task_list.next_task; /* Cambia tarea actual por siguiente tarea */
-	task_list.tasks[task_list.current_task].state = S_RUNNING; /* Pone tarea actual a correr */
+	task_list.tasks[task_list.current_task].state = S_RUNNING; /* Pone tarea actual a correr */‬
 
-	/* PendSV set pending bit: bit_28 del registro ICSR (From User Guide) */
-//	SCB->ICSR |= 0x‭10000000U;	/* Invoca el cambio de contexto (PendSV) */
-//	SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;‬
 	first_time_here = FALSE;	/* Limpiamos la variable para siempre*/
+
+	SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;	/* Debe ser la última linea para quitar error */
 }
 
 static void activate_waiting_tasks()
