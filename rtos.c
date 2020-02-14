@@ -203,7 +203,7 @@ static void dispatcher(task_switch_type_e type)
 	task_list.next_task = siguiente_tarea;	/* Insertamos el ID que encontramos en nuestra estructura de lista */
 
 
-	if (task_list.next_task != task_list.current_task)		   /* ¿La nueva o siguiente tarea a ejecutar es diferente de la actual? */
+	if (task_list.next_task != task_list.current_task)	/* ¿La nueva o siguiente tarea a ejecutar es diferente de la actual? */
 	{
 		context_switch(kFromNormalExec);	/* Llama context_switch (desde la tarea) */
 	}
@@ -212,14 +212,15 @@ static void dispatcher(task_switch_type_e type)
 FORCE_INLINE static void context_switch(task_switch_type_e type)
 {
 // 	DUDA... SP = ("r0 ó r7 ó r13 ??? " y como lo metemos al frame correspondiente)
-	register uint32_t SP asm ("r13");	/* De pptx... Para asociar una variable en C a un registro de propósito general */
+	// Variable SP que está apuntando al $r0
+	register uint32_t SP asm ("r0");	/* De pptx... Para asociar una variable en C a un registro de propósito general */
 
 	static uint8_t first_time_here = TRUE;	/* Seteamos variable booleana solo 1 vez */
 
 	if (first_time_here == FALSE)
 	{
 		/* Salva el stack pointer actual en el Stack Frame ($r0) de la tarea actual */
-		asm ("mov r0, SP");			/* Para almacenar el SP en r0 que es parte del frame */
+		asm ("mov SP, r7");			/* Para almacenar el SP en r0 que es parte del frame */
 
 // DUDA... se debe actualizar aqui?
 		task_list.tasks[task_list.current_task].sp = (uint32_t *)SP;
@@ -230,8 +231,8 @@ FORCE_INLINE static void context_switch(task_switch_type_e type)
 	task_list.tasks[task_list.current_task].state = S_RUNNING; /* Pone tarea actual a correr */
 
 	/* PendSV set pending bit: bit_28 del registro ICSR (From User Guide) */
-	ICSR = ICSR | 0x‭10000000;	/* Invoca el cambio de contexto (PendSV) */‬
-
+//	SCB->ICSR |= 0x‭10000000U;	/* Invoca el cambio de contexto (PendSV) */
+//	SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;‬
 	first_time_here = FALSE;	/* Limpiamos la variable para siempre*/
 }
 
