@@ -209,7 +209,7 @@ static void dispatcher(task_switch_type_e type)
 
 	if (task_list.next_task != task_list.current_task)	/* ¿La nueva o siguiente tarea a ejecutar es diferente de la actual? */
 	{
-		context_switch(type);	/* Llama context_switch (desde la tarea) */
+		context_switch(type);	/* Llama context_switch (desde tarea o ISR) */
 	}
 }
 
@@ -239,7 +239,7 @@ FORCE_INLINE static void context_switch(task_switch_type_e type)
 	}
 
 	task_list.current_task = task_list.next_task; /* Cambia tarea actual por siguiente tarea */
-	task_list.tasks[task_list.current_task].state = S_RUNNING; /* Pone tarea actual a correr */‬
+	task_list.tasks[task_list.current_task].state = S_RUNNING; /* Pone tarea actual a correr */
 
 	first_time_here = FALSE;	/* Limpiamos la variable para siempre*/
 
