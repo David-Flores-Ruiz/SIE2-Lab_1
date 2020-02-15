@@ -120,7 +120,7 @@ void rtos_start_scheduler(void)
 rtos_task_handle_t rtos_create_task(void (*task_body)(), uint8_t priority,
 		rtos_autostart_e autostart)
 {
-	rtos_tcb_t new_task;
+	rtos_tcb_t new_task = {0};
 	rtos_task_handle_t task_handle;
 
 	if (task_list.nTasks < RTOS_MAX_NUMBER_OF_TASKS)
@@ -215,33 +215,32 @@ static void dispatcher(task_switch_type_e type)
 
 FORCE_INLINE static void context_switch(task_switch_type_e type)
 {
-// 	DUDA... SP = ("r0 ó r7 ó r13 ??? " y como lo metemos al frame correspondiente)
-	// Variable SP que está apuntando al $r0
-	register uint32_t SP asm ("r0");	/* De pptx... Para asociar una variable en C a un registro de propósito general */
+	// Variable Sr0 que está apuntando al $r0
+	register uint32_t r0 asm ("r0");	/* De pptx... Para asociar una variable en C a un registro de propósito general */
+	(void) r0;
 
 	static uint8_t first_time_here = TRUE;	/* Seteamos variable booleana solo 1 vez */
 
 	if (first_time_here == FALSE)
 	{
 		/* Salva el stack pointer actual en el Stack Frame ($r0) de la tarea actual */
-		asm ("mov SP, r7");			/* Para almacenar el SP en r0 que es parte del frame */
-
-		task_list.tasks[task_list.current_task].sp = (uint32_t *)SP;
+		asm ("mov r0, r7");			/* Para almacenar el SP en r0 que es parte del frame */
+		task_list.tasks[task_list.current_task].sp = (uint32_t *)r0;
 
 		if (type == kFromNormalExec) {
-			task_list.tasks[task_list.current_task].sp -= -8; /* Valor dummy */
+			task_list.tasks[task_list.current_task].sp -= (STACK_FRAME_SIZE + 1); /* Valor dummy */
 		}
 
 		if (type == kFromISR) {
-			task_list.tasks[task_list.current_task].sp -= -1;
+			task_list.tasks[task_list.current_task].sp -= -(STACK_FRAME_SIZE - 1) - 2; /* Valor dummy -1 */
 		}
 
+	} else {
+		first_time_here = FALSE;	/* Limpiamos la variable para siempre*/
 	}
 
 	task_list.current_task = task_list.next_task; /* Cambia tarea actual por siguiente tarea */
 	task_list.tasks[task_list.current_task].state = S_RUNNING; /* Pone tarea actual a correr */
-
-	first_time_here = FALSE;	/* Limpiamos la variable para siempre*/
 
 	SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;	/* Debe ser la última linea para quitar error */
 }
