@@ -106,6 +106,7 @@ void rtos_start_scheduler(void)
 #ifdef RTOS_ENABLE_IS_ALIVE
 	init_is_alive();
 #endif
+
 	SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk
 	        | SysTick_CTRL_ENABLE_Msk;
 	reload_systick();
@@ -113,8 +114,10 @@ void rtos_start_scheduler(void)
 	task_list.global_tick = 0;			 		/* Poner el reloj global en 0 */
 	rtos_create_task(idle_task, 0, kAutoStart);	/* Crear tarea IDLE */
 
-	for (;;)
-		;
+	for ( ; ; )
+	{
+		; // WAIT //
+	}
 }
 
 rtos_task_handle_t rtos_create_task(void (*task_body)(), uint8_t priority,
@@ -227,13 +230,13 @@ FORCE_INLINE static void context_switch(task_switch_type_e type)
 		asm ("mov r0, r7");			/* Para almacenar el SP en r0 que es parte del frame */
 		task_list.tasks[task_list.current_task].sp = (uint32_t *)r0;
 
-		if (type == kFromNormalExec) {
-			task_list.tasks[task_list.current_task].sp -= (STACK_FRAME_SIZE + 1); /* Valor dummy */
+		if (type == kFromNormalExec) {						// PUSH al stack frame
+			task_list.tasks[task_list.current_task].sp -=  (STACK_FRAME_SIZE + 1); /* Valor dummy */
+		}
+		if(type == kFromISR){								// POP al stack frame
+			task_list.tasks[task_list.current_task].sp -= -(STACK_FRAME_SIZE - 1); /* Valor dummy -1 */
 		}
 
-		if (type == kFromISR) {
-			task_list.tasks[task_list.current_task].sp -= -(STACK_FRAME_SIZE - 1) - 2; /* Valor dummy -1 */
-		}
 
 	} else {
 		first_time_here = FALSE;	/* Limpiamos la variable para siempre*/
@@ -252,7 +255,7 @@ static void activate_waiting_tasks()
 	{
 		if (task_list.tasks[i].state == S_WAITING) 	/* ¿Tarea en estado de ESPERA? */
 		{
-			task_list.tasks[i].local_tick = task_list.tasks[i].local_tick - 1; 	 /* Disminuye en 1 el reloj local de la tarea */
+			task_list.tasks[i].local_tick -= 1; 	/* Disminuye en 1 el reloj local de la tarea */
 
 			if (task_list.tasks[i].local_tick == 0)	/* ¿Reloj local de tarea es igual a 0? */
 			{
@@ -289,7 +292,6 @@ void SysTick_Handler(void)
 	dispatcher(kFromISR);	 // kFromISR, kFromNormalExec 	/* Llama dispatcher (desde interrupción) */
 
 	reload_systick();
-
 }
 
 void PendSV_Handler(void) /* Copy and Paste: From the "first class exercise" */
