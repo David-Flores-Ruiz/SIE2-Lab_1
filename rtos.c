@@ -116,7 +116,7 @@ void rtos_start_scheduler(void)
 
 	for ( ; ; )
 	{
-		; // WAIT //
+		PRINTF("START SCHEDULER!\r\n"); // WAIT //
 	}
 }
 
@@ -233,10 +233,10 @@ FORCE_INLINE static void context_switch(task_switch_type_e type)
 		if (type == kFromNormalExec) {						// PUSH al stack frame
 			task_list.tasks[task_list.current_task].sp -=  (STACK_FRAME_SIZE + 1); /* Valor dummy */
 		}
+
 		if(type == kFromISR){								// POP al stack frame
 			task_list.tasks[task_list.current_task].sp -= -(STACK_FRAME_SIZE - 1); /* Valor dummy -1 */
 		}
-
 
 	} else {
 		first_time_here = FALSE;	/* Limpiamos la variable para siempre*/
