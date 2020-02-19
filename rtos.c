@@ -1,11 +1,16 @@
-/**
- * @file rtos.c
- * @author ITESO
- * @date Feb 2018
- * @brief Implementation of rtos API
- *
+/*
  * This is the implementation of the rtos module for the
  * embedded systems II course at ITESO
+ */
+
+/*
+ * @file:			miniRTOS.c
+ * @brief:   		Implementation of rtos API
+ *
+ * @company:			  ITESO
+ * @Engineer Team:	 D.F.R. / R.G.P.
+ * @contact:		ie717807@iteso.mx
+ * @contact:		ie706818@iteso.mx
  */
 
 #include "board.h"
@@ -20,6 +25,14 @@
 #include "fsl_gpio.h"
 #include "fsl_port.h"
 #endif
+
+/**********************************************************************************/
+// Our offset calculated for SP
+/**********************************************************************************/
+
+#define SP_OFFSET_kNORMAL			9
+#define SP_OFFSET_kISR				11
+
 /**********************************************************************************/
 // Module defines
 /**********************************************************************************/
@@ -27,7 +40,8 @@
 #define FORCE_INLINE 	__attribute__((always_inline)) inline
 
 #define STACK_FRAME_SIZE			8
-#define STACK_LR_OFFSET				2
+#define STACK_LR_OFFSET				3
+#define STACK_PC_OFFSET				2	/* Se usa en el frame inicial para asignar el task_body de cada tarea */
 #define STACK_PSR_OFFSET			1
 #define STACK_PSR_DEFAULT			0x01000000
 
@@ -116,7 +130,7 @@ void rtos_start_scheduler(void)
 
 	for ( ; ; )
 	{
-//		PRINTF("START SCHEDULER!\r\n"); // WAIT //
+		PRINTF("START SCHEDULER!\r\n"); // WAIT //
 	}
 }
 
@@ -140,9 +154,9 @@ rtos_task_handle_t rtos_create_task(void (*task_body)(), uint8_t priority,
 		new_task.sp = &(task_list.tasks[task_list.nTasks].stack[RTOS_STACK_SIZE - STACK_FRAME_SIZE - 1]);
 		new_task.task_body = task_body;
 		new_task.local_tick = 0;	   /* Reloj local de la tarea en 0 */
-//		new_task.reserved =
+		//new_task.reserved =
 		new_task.stack[RTOS_STACK_SIZE - STACK_PSR_OFFSET] = STACK_PSR_DEFAULT;
-		new_task.stack[RTOS_STACK_SIZE - STACK_LR_OFFSET] = (uint32_t) task_body;
+		new_task.stack[RTOS_STACK_SIZE - STACK_PC_OFFSET] = (uint32_t) task_body;
 
 		task_list.tasks[task_list.nTasks] = new_task;  /* Insertamos la nueva tarea a la lista*/
 
@@ -218,11 +232,11 @@ static void dispatcher(task_switch_type_e type)
 
 FORCE_INLINE static void context_switch(task_switch_type_e type)
 {
-	// Variable Sr0 que está apuntando al $r0
+	// Variable r0 que está apuntando al $r0
 	register uint32_t r0 asm ("r0");	/* De pptx... Para asociar una variable en C a un registro de propósito general */
 	(void) r0;
 
-	static uint8_t first_time_here = TRUE;	/* Seteamos variable booleana solo 1 vez */
+	static boolean_t first_time_here = TRUE;	/* Seteamos variable booleana solo 1 vez */
 
 	if (first_time_here == FALSE)
 	{
@@ -230,13 +244,13 @@ FORCE_INLINE static void context_switch(task_switch_type_e type)
 		asm ("mov r0, r7");			/* Para almacenar el SP en r0 que es parte del frame */
 		task_list.tasks[task_list.current_task].sp = (uint32_t *)r0;
 
-		if (kFromNormalExec == type) {						// PUSH al stack frame
-			task_list.tasks[task_list.current_task].sp -=  (STACK_FRAME_SIZE + 1); /* Valor dummy */
-		}
+		if (kFromNormalExec == type) {						// PUSH al stack frame + consumo de stack por rtos_delay()
+			task_list.tasks[task_list.current_task].sp -=  (SP_OFFSET_kNORMAL); /* Valor calculado del offset del SP */
+		}													// Crece el STACK
 
-		if(kFromISR == type){								// POP al stack frame
-			task_list.tasks[task_list.current_task].sp -= -(STACK_FRAME_SIZE - 1) - 4; /* Valor dummy -1 */
-		}
+		if(kFromISR == type){								// POP al stack frame  + consumo de stack por SysTick_Handler()
+			task_list.tasks[task_list.current_task].sp -= -(SP_OFFSET_kISR); 	/* Valor calculado del offset del SP*/
+		}													// Se reduce el STACK
 
 	} else {
 		first_time_here = FALSE;	/* Limpiamos la variable para siempre*/

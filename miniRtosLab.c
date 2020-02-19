@@ -4,8 +4,13 @@
  */
 
 /*
- * @file    miniRtosLab.c
- * @brief   Application entry point.
+ * @file:			miniRTOS.c
+ * @brief:   		Lab1_SIE2_RTOS_in_BareMetal_in_C_for_FRDM-K66F
+ *
+ * @company:			  ITESO
+ * @Engineer Team:	 D.F.R. / R.G.P.
+ * @contact:		ie717807@iteso.mx
+ * @contact:		ie706818@iteso.mx
  */
 
 #include <stdio.h>
