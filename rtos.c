@@ -116,7 +116,7 @@ void rtos_start_scheduler(void)
 
 	for ( ; ; )
 	{
-		PRINTF("START SCHEDULER!\r\n"); // WAIT //
+//		PRINTF("START SCHEDULER!\r\n"); // WAIT //
 	}
 }
 
@@ -230,12 +230,12 @@ FORCE_INLINE static void context_switch(task_switch_type_e type)
 		asm ("mov r0, r7");			/* Para almacenar el SP en r0 que es parte del frame */
 		task_list.tasks[task_list.current_task].sp = (uint32_t *)r0;
 
-		if (type == kFromNormalExec) {						// PUSH al stack frame
+		if (kFromNormalExec == type) {						// PUSH al stack frame
 			task_list.tasks[task_list.current_task].sp -=  (STACK_FRAME_SIZE + 1); /* Valor dummy */
 		}
 
-		if(type == kFromISR){								// POP al stack frame
-			task_list.tasks[task_list.current_task].sp -= -(STACK_FRAME_SIZE - 1); /* Valor dummy -1 */
+		if(kFromISR == type){								// POP al stack frame
+			task_list.tasks[task_list.current_task].sp -= -(STACK_FRAME_SIZE - 1) - 4; /* Valor dummy -1 */
 		}
 
 	} else {
