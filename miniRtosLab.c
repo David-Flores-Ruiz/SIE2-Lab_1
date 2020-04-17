@@ -27,10 +27,22 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+<<<<<<< HEAD
  
 /**
  * @file    miniRtosLab.c
  * @brief   Application entry point.
+=======
+
+/*
+ * @file:			miniRTOS.c
+ * @brief:   		Lab1_SIE2_RTOS_in_BareMetal_in_C_for_FRDM-K66F
+ *
+ * @company:			  ITESO
+ * @Engineer Team:	 D.F.R. / R.G.P.
+ * @contact:		ie717807@iteso.mx
+ * @contact:		ie706818@iteso.mx
+>>>>>>> branchAUX
  */
 #include <stdio.h>
 #include "board.h"
@@ -89,11 +101,19 @@ int main(void) {
     BOARD_InitDebugConsole();
 
     PRINTF("Hello World\n");
+<<<<<<< HEAD
 
 	rtos_create_task(dummy_task1, 1, kAutoStart);
 	rtos_create_task(dummy_task2, 2, kAutoStart);
 	rtos_create_task(dummy_task3, 1, kAutoStart);
 	rtos_start_scheduler();
+=======
+    								   /* Al pricipio: Index en arreglo de lista = [0] */ /* ntask = 0 */
+	rtos_create_task(dummy_task1, 1, kAutoStart);	/* Index en arreglo de lista = [0] */ /* ntask = 1 */
+	rtos_create_task(dummy_task2, 2, kAutoStart);	/* Index en arreglo de lista = [1] */ /* ntask = 2 */
+	rtos_create_task(dummy_task3, 1, kAutoStart);	/* Index en arreglo de lista = [2] */ /* ntask = 3 */
+	rtos_start_scheduler();	 /* Crea la tarea IDLE con Index en arreglo de lista = [3] */ /* ntask = 4 */
+>>>>>>> branchAUX
 
 	for (;;)
 	{
