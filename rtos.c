@@ -2,6 +2,7 @@
  * This is the implementation of the rtos module for the
  * embedded systems II course at ITESO
  */
+<<<<<<< HEAD
 
 /*
  * @file:			miniRTOS.c
@@ -15,6 +16,11 @@
 
 #include "board.h"
 #include "fsl_debug_console.h"
+=======
+//HOLA
+//ontas?
+//aqui con Alexis!
+>>>>>>> master
 #include "rtos.h"
 #include "rtos_config.h"
 
@@ -70,7 +76,6 @@ typedef enum
 {
 	S_READY = 0, S_RUNNING, S_WAITING, S_SUSPENDED
 } task_state_e;
-
 typedef enum
 {
 	kFromISR = 0, kFromNormalExec
@@ -98,8 +103,7 @@ struct
 	rtos_task_handle_t next_task;
 	rtos_tcb_t tasks[RTOS_MAX_NUMBER_OF_TASKS + 1];
 	rtos_tick_t global_tick;
-} task_list =
-{ 0 };
+} task_list ={ 0 };
 
 /**********************************************************************************/
 // Local methods prototypes
@@ -120,6 +124,7 @@ void rtos_start_scheduler(void)
 #ifdef RTOS_ENABLE_IS_ALIVE
 	init_is_alive();
 #endif
+<<<<<<< HEAD
 
 	SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk
 	        | SysTick_CTRL_ENABLE_Msk;
@@ -132,11 +137,19 @@ void rtos_start_scheduler(void)
 	{
 		PRINTF("START SCHEDULER!\r\n"); // WAIT //
 	}
+=======
+	SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
+	reload_systick();
+
+	task_list.global_tick = 0;					// Poner el reloj global en 0
+	rtos_create_task(idle_task, 0, kAutoStart);	// Crear tarea IDLE
+	for (;;);
+>>>>>>> master
 }
 
-rtos_task_handle_t rtos_create_task(void (*task_body)(), uint8_t priority,
-		rtos_autostart_e autostart)
+rtos_task_handle_t rtos_create_task(void (*task_body)(), uint8_t priority,rtos_autostart_e autostart)
 {
+<<<<<<< HEAD
 	rtos_tcb_t new_task = {0};
 	rtos_task_handle_t task_handle;
 
@@ -162,12 +175,43 @@ rtos_task_handle_t rtos_create_task(void (*task_body)(), uint8_t priority,
 
 		task_handle = task_list.nTasks;/* Para retornar el contador actual de la tarea creada */
 		task_list.nTasks++;			   /* Incrementa indice para insertar la siguiente tarea */
+=======
+
+	rtos_tcb_t new_task;
+
+	if(RTOS_MAX_NUMBER_OF_TASKS>task_list.nTasks){
+		if(autostart == kAutoStart)
+		{
+			new_task.priority =priority;
+			new_task.state = S_READY;
+			new_task.task_body = task_body;
+			task_list.tasks[task_list.nTasks]= new_task;
+		}
+
+		new_task.state = S_SUSPENDED;
+		task_list.tasks[task_list.nTasks].sp = &(task_list.tasks[task_list.nTasks].stack[RTOS_STACK_SIZE - 1 - STACK_FRAME_SIZE]);//apunta una direccion encima del stack frame
+
+		new_task.stack[STACK_PSR_OFFSET] = STACK_PSR_DEFAULT;
+		new_task.local_tick=0;//cada cuanto de realiza la tarea
+
+		//////////////////////////////////////////////////////////////////////////////////7
+		task_list.tasks[task_list.nTasks].priority = priority;
+		task_list.tasks[task_list.nTasks].local_tick = 0;
+		task_list.tasks[task_list.nTasks].task_body = task_body;
+		task_list.tasks[task_list.nTasks].sp =
+				&(task_list.tasks[task_list.nTasks].stack[RTOS_STACK_SIZE - 1
+						- STACK_FRAME_SIZE]);
+		task_list.tasks[task_list.nTasks].state =
+				kStartSuspended == autostart ? S_SUSPENDED : S_READY;
+
+		task_list.nTasks++;
+	};
+>>>>>>> master
 
 		return task_handle;	/* Retornamos el indice de la tarea nueva */
 	}
 	return -1;				/* Tarea invalida */
 }
-
 rtos_tick_t rtos_get_clock(void)
 {
 	rtos_tick_t global_tick = task_list.global_tick;
@@ -204,6 +248,7 @@ static void reload_systick(void)
 	SysTick->VAL = 0;
 }
 
+<<<<<<< HEAD
 static void dispatcher(task_switch_type_e type)
  {
 
@@ -228,6 +273,12 @@ static void dispatcher(task_switch_type_e type)
 	{
 		context_switch(type);	/* Llama context_switch (desde tarea o ISR) */
 	}
+=======
+static void dispatcher(task_switch_type_e type)/////////////////////////////////////
+{
+
+	task_list.tasks[task_list.next_task].
+>>>>>>> master
 }
 
 FORCE_INLINE static void context_switch(task_switch_type_e type)
@@ -267,11 +318,19 @@ static void activate_waiting_tasks()
 	uint8_t i = 0;
 	for (i = 0; i < task_list.nTasks; i++) 		  	/* Recorremos la lista total de tareas */
 	{
+<<<<<<< HEAD
 		if (task_list.tasks[i].state == S_WAITING) 	/* ¿Tarea en estado de ESPERA? */
+=======
+		if (task_list.tasks[i].state = S_WAITING) 	/* Â¿Tarea en estado de ESPERA? */
+>>>>>>> master
 		{
 			task_list.tasks[i].local_tick -= 1; 	/* Disminuye en 1 el reloj local de la tarea */
 
+<<<<<<< HEAD
 			if (task_list.tasks[i].local_tick == 0)	/* ¿Reloj local de tarea es igual a 0? */
+=======
+			if (task_list.tasks[i].local_tick == 0)	/* Â¿Reloj local de tarea es igual a 0? */
+>>>>>>> master
 			{
 				task_list.tasks[i].state = S_READY;	/* Ponemos la tarea en estado LISTO */
 			}
@@ -308,7 +367,12 @@ void SysTick_Handler(void)
 	reload_systick();
 }
 
+<<<<<<< HEAD
 void PendSV_Handler(void) /* Copy and Paste: From the "first class exercise" */
+=======
+
+void PendSV_Handler(void)
+>>>>>>> master
 {
 	register int32_t r0 asm("r0");
 	(void) r0;
